@@ -3,144 +3,321 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tàu cập bến 3D — Hai tàu lai dắt dẫn tàu container vào cảng</title>
+<title>Shipments Overview — Theo dõi tàu cập bến 3D</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  html,body { width:100%; height:100%; overflow:hidden; font-family:"Segoe UI", system-ui, sans-serif; background:#0b2a3f; }
-  #scene { position:fixed; inset:0; }
-  canvas { display:block; }
+  html,body { height:100%; }
+  body {
+    font-family:"Segoe UI", system-ui, sans-serif; color:#f2f6f6;
+    background:
+      radial-gradient(1100px 600px at 75% -10%, rgba(18,83,82,.55), transparent 60%),
+      radial-gradient(900px 700px at -10% 110%, rgba(18,83,82,.35), transparent 55%),
+      #020809;
+    min-height:100vh; overflow-x:hidden;
+  }
+  .app { display:flex; min-height:100vh; }
 
-  .panel {
-    position:fixed; top:14px; left:14px; width:340px; max-width:calc(100vw - 28px);
-    background:rgba(6,24,42,.88); color:#eaf4fb; border:1px solid rgba(120,200,255,.35);
-    border-radius:14px; padding:14px 16px; backdrop-filter: blur(6px); z-index:10;
-    box-shadow:0 8px 30px rgba(0,0,0,.35);
+  /* ===== Sidebar icon ===== */
+  .side {
+    width:66px; flex:0 0 66px; display:flex; flex-direction:column; align-items:center;
+    padding:14px 0; gap:10px; border-right:1px solid rgba(255,255,255,.06);
   }
-  .panel h1 { font-size:19px; letter-spacing:.4px; color:#7dd3fc; margin-bottom:2px; }
-  .panel .sub { font-size:12.5px; color:#b8d8ec; margin-bottom:10px; }
-  #phaseName { font-size:16px; font-weight:700; color:#fbbf24; margin-bottom:4px; }
-  #phaseDesc { font-size:13.5px; line-height:1.5; color:#eaf4fb; min-height:60px; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-  button {
-    background:#155e86; color:#fff; border:1px solid #38bdf8; border-radius:8px;
-    padding:7px 11px; font-size:13px; cursor:pointer;
+  .side .ic {
+    width:42px; height:42px; border-radius:13px; display:grid; place-items:center;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.07);
+    font-size:17px; cursor:pointer; color:#cfe3e1;
   }
-  button:hover { background:#1d77a8; }
-  button.active { background:#f59e0b; border-color:#fbbf24; color:#231a00; font-weight:700; }
-  input[type=range] { width:100%; margin-top:10px; accent-color:#f59e0b; }
-  .meta { display:flex; justify-content:space-between; font-size:12px; color:#a9cade; margin-top:4px; }
-  .meta b { color:#fff; }
-  label.chk { font-size:13px; color:#cfe8f7; display:flex; align-items:center; gap:6px; cursor:pointer; }
-  .hint {
-    position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
-    background:rgba(6,24,42,.75); color:#cfe8f7; font-size:12.5px;
-    padding:6px 14px; border-radius:999px; z-index:10; white-space:nowrap;
+  .side .ic.on { background:#f8f8f9; color:#06231f; }
+  .side .sp { flex:1; }
+
+  .main { flex:1; padding:16px 20px 20px; min-width:0; }
+
+  /* ===== Topbar ===== */
+  .topbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .logo { display:flex; align-items:center; gap:9px; font-weight:800; font-size:17px; letter-spacing:.3px; }
+  .logo .ball { width:30px; height:30px; border-radius:50%;
+    background:conic-gradient(from 40deg, #22d3ee 0 50%, #f8f8f9 50% 100%); border:2px solid rgba(255,255,255,.25); }
+  .burger { width:38px; height:38px; border-radius:11px; border:none; background:#f8f8f9; font-size:16px; cursor:pointer; }
+  nav { display:flex; gap:6px; flex-wrap:wrap; }
+  nav a {
+    color:#d7e6e4; text-decoration:none; font-size:14px; padding:9px 15px; border-radius:999px;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.06);
   }
-  .legend { position:fixed; top:14px; right:14px; z-index:10; background:rgba(6,24,42,.85);
-    color:#eaf4fb; border-radius:12px; padding:10px 14px; font-size:12.5px; line-height:1.9;
-    border:1px solid rgba(120,200,255,.3); }
-  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:7px; }
-  @media (max-width:640px){ .legend{ display:none; } .panel{ width:300px; } }
+  nav a.on { background:#f8f8f9; color:#0a0f0e; font-weight:700; }
+  nav a::after { content:" ▾"; font-size:10px; opacity:.7; }
+  .top-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+  .ticon { width:38px; height:38px; border-radius:50%; display:grid; place-items:center;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); position:relative; font-size:15px; }
+  .ticon .dotr { position:absolute; top:7px; right:8px; width:8px; height:8px; border-radius:50%; background:#ef4444; }
+  .user { display:flex; align-items:center; gap:9px; }
+  .user .av { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#f59e0b,#ac481c);
+    display:grid; place-items:center; font-weight:800; font-size:14px; color:#fff; }
+  .user .nm { font-size:13.5px; font-weight:700; line-height:1.15; }
+  .user .rl { font-size:11px; color:#9fb8b5; }
+
+  /* ===== Tiêu đề ===== */
+  .head { display:flex; align-items:flex-end; gap:16px; margin:20px 0 14px; flex-wrap:wrap; }
+  .head h1 { font-size:31px; font-weight:800; letter-spacing:.2px; }
+  .head p { color:#9fb8b5; font-size:13.5px; margin-top:4px; }
+  .back { width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,255,255,.15);
+    background:rgba(255,255,255,.05); color:#fff; cursor:pointer; margin-bottom:6px; }
+  .head .ctrls { margin-left:auto; display:flex; gap:9px; align-items:center; }
+  .pill { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); color:#e6f0ef;
+    padding:9px 14px; border-radius:999px; font-size:13px; cursor:pointer; }
+  .pill.white { background:#f8f8f9; color:#0a0f0e; font-weight:700; border-color:#f8f8f9; }
+
+  /* ===== Hero 3D ===== */
+  .hero {
+    position:relative; height:52vh; min-height:400px; border-radius:22px; overflow:hidden;
+    border:1px solid rgba(120,220,210,.18); background:#06231f;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);
+  }
+  #scene { position:absolute; inset:0; }
+  #scene canvas { display:block; }
+  .glass {
+    background:rgba(4,20,19,.72); border:1px solid rgba(255,255,255,.13);
+    backdrop-filter: blur(9px); border-radius:16px;
+  }
+  /* Thẻ tàu nổi */
+  .shipcard { position:absolute; top:16px; right:16px; width:308px; max-width:calc(100% - 32px); padding:15px 17px; z-index:5; }
+  .shipcard .x { position:absolute; top:9px; right:12px; color:#9fb8b5; cursor:pointer; font-size:13px; }
+  .shipcard h2 { font-size:19px; font-weight:800; display:inline-block; margin-right:8px; }
+  .badge { font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; background:#facc15; color:#231a00; vertical-align:2px; }
+  .badge.green { background:#22c55e; color:#04160a; }
+  .shipcard .imo { color:#9fb8b5; font-size:12.5px; margin:2px 0 10px; }
+  .prog { position:relative; height:5px; background:rgba(255,255,255,.16); border-radius:99px; margin:14px 2px 8px; }
+  .prog .fill { position:absolute; inset:0 auto 0 0; width:40%; background:#22d3ee; border-radius:99px; transition:width .3s linear; }
+  .prog .pt { position:absolute; top:50%; width:11px; height:11px; border-radius:50%; background:#0b2a26;
+    border:2.5px solid #7d8f8c; transform:translate(-50%,-50%); }
+  .prog .pt.done { background:#22d3ee; border-color:#22d3ee; }
+  .shipcard .nums { font-size:12.5px; color:#cfe3e1; }
+  .shipcard .nums b { color:#fff; }
+  .warn { display:flex; gap:9px; align-items:center; margin-top:11px; padding:9px 11px; border-radius:11px;
+    background:rgba(239,68,68,.13); border:1px solid rgba(239,68,68,.35); font-size:12.5px; }
+  .warn b { color:#fca5a5; }
+  /* Marker tracking trên hero */
+  .marker { position:absolute; z-index:4; transform:translate(-50%,-50%); pointer-events:none; }
+  .marker.pin { font-size:21px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
+  .marker.tri { background:#facc15; color:#231a00; font-weight:900; width:24px; height:24px; font-size:14px;
+    clip-path:polygon(50% 0, 100% 100%, 0 100%); display:grid; place-items:end center; padding-bottom:2px; }
+  .marker.dot { width:13px; height:13px; border-radius:50%; background:#ef4444; border:2.5px solid #fff;
+    box-shadow:0 0 0 6px rgba(239,68,68,.25); }
+  .sigchip { position:absolute; z-index:4; transform:translate(-50%,-130%); padding:6px 11px; border-radius:999px;
+    font-size:12px; white-space:nowrap; }
+  .sigchip b { color:#22d3ee; }
+  /* Thẻ giai đoạn + điều khiển dưới hero */
+  .phasebar { position:absolute; left:16px; right:16px; bottom:14px; z-index:5; display:flex; gap:12px; align-items:stretch; flex-wrap:wrap; }
+  .phasebox { flex:1 1 340px; padding:11px 15px; }
+  .phasebox .pn { color:#facc15; font-weight:800; font-size:14px; margin-bottom:3px; }
+  .phasebox .pd { font-size:12.8px; line-height:1.45; color:#dcebe9; }
+  .ctlbox { display:flex; align-items:center; gap:10px; padding:11px 14px; flex:2 1 380px; }
+  .ctlbox button { background:rgba(255,255,255,.09); color:#fff; border:1px solid rgba(255,255,255,.18);
+    border-radius:9px; padding:8px 12px; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .ctlbox button:hover { background:rgba(255,255,255,.18); }
+  .ctlbox input[type=range] { flex:1; accent-color:#22d3ee; min-width:90px; }
+  .ctlbox .stat { font-size:12px; color:#9fb8b5; white-space:nowrap; }
+  .ctlbox .stat b { color:#fff; }
+
+  /* ===== 3 thẻ dưới ===== */
+  .cards { display:grid; grid-template-columns:1.15fr 1.35fr 1fr; gap:16px; margin-top:16px; }
+  @media (max-width:1000px){ .cards { grid-template-columns:1fr; } .side { display:none; } }
+  .card { border-radius:20px; padding:17px 19px; background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.09); min-height:218px; }
+  .card h3 { font-size:14.5px; font-weight:700; color:#e8f2f1; display:flex; align-items:center; gap:8px; }
+  .card h3 .r { margin-left:auto; font-size:11.5px; color:#9fb8b5; font-weight:400; }
+  .bignum { font-size:31px; font-weight:800; margin:9px 0 2px; }
+  .bignum small { font-size:14px; color:#9fb8b5; font-weight:500; }
+  .dots { display:grid; grid-template-columns:repeat(16, 1fr); gap:5px; margin:13px 0 11px; }
+  .dots i { width:8px; height:8px; border-radius:50%; display:block; }
+  .legend { display:flex; gap:16px; font-size:12px; color:#c4d8d5; flex-wrap:wrap; }
+  .legend i { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:12.8px; }
+  th { text-align:left; color:#8fa9a6; font-weight:500; font-size:11.5px; padding:5px 4px; }
+  td { padding:7px 4px; border-top:1px solid rgba(255,255,255,.06); color:#e6f0ef; white-space:nowrap; }
+  td .bar { width:86px; height:5px; background:rgba(255,255,255,.14); border-radius:99px; display:inline-block; vertical-align:middle; }
+  td .bar i { display:block; height:100%; background:#22d3ee; border-radius:99px; }
+  td.var { color:#facc15; font-weight:700; }
+  .balwrap { position:relative; height:138px; margin-top:6px; }
+  #balanceScene { position:absolute; inset:0; }
+  #balanceScene canvas { display:block; }
+  .gauge { position:absolute; inset:6px 26px; border:1.5px solid rgba(34,211,238,.35); border-radius:50%;
+    border-top-color:transparent; pointer-events:none; }
+  .balnum { text-align:center; font-size:13px; color:#cfe3e1; }
+  .balnum b { color:#22d3ee; font-size:16px; }
+  .hintline { color:#7e9a97; font-size:12px; margin-top:12px; text-align:center; }
 </style>
 </head>
 <body>
-<div id="scene"></div>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="ic on">⚓</div><div class="ic">▦</div><div class="ic">🚢</div><div class="ic">📦</div>
+    <div class="ic">🗺</div><div class="ic">📊</div><div class="ic">💬</div>
+    <div class="sp"></div>
+    <div class="ic">⚙</div><div class="ic">↪</div>
+  </aside>
 
-<div class="panel">
-  <h1>🚢 TÀU CẬP BẾN 3D</h1>
-  <div class="sub">Tàu container được <b>2 tàu lai dắt</b> dẫn vào bến cảng — Three.js</div>
-  <div id="phaseName">Giai đoạn 1: Tiếp cận</div>
-  <div id="phaseDesc"></div>
-  <input type="range" id="scrub" min="0" max="1000" value="0">
-  <div class="meta"><span>⏱ <b id="clock">0s</b> / 60s</span><span>📏 Cách bến: <b id="dist">—</b></span><span>🚀 <b id="speedo">—</b></span></div>
-  <div class="row">
-    <button id="btnPlay">⏸ Tạm dừng</button>
-    <button id="btnReplay">↺ Chạy lại</button>
-    <button id="btnSpeed">Tốc độ: 1×</button>
-  </div>
-  <div class="row">
-    <button data-cam="free" class="camBtn active">🎥 Tự do</button>
-    <button data-cam="overview" class="camBtn">🌅 Toàn cảnh</button>
-    <button data-cam="follow" class="camBtn">🚢 Theo tàu lớn</button>
-    <button data-cam="tug" class="camBtn">🛥 Gần tàu lai</button>
-    <button data-cam="dock" class="camBtn">🏗 Từ bến</button>
-  </div>
-  <div class="row">
-    <label class="chk"><input type="checkbox" id="chkLabels" checked> Hiện nhãn tên tàu</label>
-    <label class="chk"><input type="checkbox" id="chkAuto" > Tự lặp lại</label>
+  <div class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="logo"><span class="ball"></span>Marinex</div>
+      <button class="burger">☰</button>
+      <nav>
+        <a href="#" onclick="return false">Dashboard</a>
+        <a href="#" class="on" onclick="return false">Shipments</a>
+        <a href="#" onclick="return false">Inventory</a>
+        <a href="#" onclick="return false">Fleet</a>
+        <a href="#" onclick="return false">Reports</a>
+      </nav>
+      <div class="top-right">
+        <div class="ticon">🔍</div>
+        <div class="ticon">🔔<span class="dotr"></span></div>
+        <div class="user">
+          <div class="av">NS</div>
+          <div><div class="nm">Ngọc Sinh</div><div class="rl">Logistics Manager</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tiêu đề -->
+    <div class="head">
+      <button class="back">←</button>
+      <div>
+        <h1>Shipments Overview</h1>
+        <p>Theo dõi tàu cập bến theo thời gian thực — tàu container được 2 tàu lai dắt vào cảng.</p>
+      </div>
+      <div class="ctrls">
+        <button class="pill">⧩ Bộ lọc</button>
+        <button class="pill">Region: Global ▾</button>
+        <button class="pill white">New shipment +</button>
+      </div>
+    </div>
+
+    <!-- HERO 3D -->
+    <section class="hero">
+      <div id="scene"></div>
+
+      <div class="marker pin" id="mkPin">📍</div>
+      <div class="marker tri" id="mkTri">!</div>
+      <div class="marker dot" id="mkDot"></div>
+      <div class="sigchip glass" id="mkSig">📡 <b>3 Signals</b> Detected · 1.2 km</div>
+
+      <div class="shipcard glass">
+        <span class="x" onclick="this.parentElement.style.display='none'">✕</span>
+        <h2>SHINI STAR</h2><span class="badge" id="statusBadge">Delayed</span>
+        <div class="imo">IMO 9876543 · Tàu container · Cảng Cát Lái</div>
+        <div class="prog"><div class="fill" id="routeFill"></div>
+          <span class="pt done" style="left:4%"></span><span class="pt done" style="left:27%"></span>
+          <span class="pt" id="routePt" style="left:50%"></span><span class="pt" style="left:73%"></span><span class="pt" style="left:96%"></span>
+        </div>
+        <div class="nums">Ports: <b>2/5</b> · ETA: <b id="etaTxt">18 h 40 m</b> · Items: <b>86/120</b></div>
+        <div class="warn">⚠ <span><b>Warning</b> — Port Delay: +2 h 19 min</span></div>
+      </div>
+
+      <div class="phasebar">
+        <div class="phasebox glass">
+          <div class="pn" id="phaseName">Giai đoạn 1 / 4 — TIẾP CẬN</div>
+          <div class="pd" id="phaseDesc"></div>
+        </div>
+        <div class="ctlbox glass">
+          <button id="btnPlay">⏸ Dừng</button>
+          <button id="btnReplay">↺ Lại</button>
+          <input type="range" id="scrub" min="0" max="1000" value="0">
+          <button id="btnSpeed">1×</button>
+          <span class="stat">Cách bến <b id="dist">—</b><br>Tốc độ <b id="speedo">—</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 THẺ PHÂN TÍCH -->
+    <section class="cards">
+      <div class="card">
+        <h3>⛽ Fuel Consumption <span class="r">Hôm nay</span></h3>
+        <div class="bignum">2,842 <small>L</small></div>
+        <div class="dots" id="fuelDots"></div>
+        <div class="legend">
+          <span><i style="background:#facc15"></i>1920 L Normal</span>
+          <span><i style="background:#f97316"></i>680 L High</span>
+          <span><i style="background:#f8f8f9"></i>240 L Avg</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🗓 Delivery Schedule <span class="r"><button class="pill" style="padding:4px 11px" onclick="return false">Refresh</button></span></h3>
+        <div class="bignum">94.2% <small>On-Time Delivery</small></div>
+        <table>
+          <tr><th>Route Id</th><th>Route</th><th>Tiến độ</th><th>Variance</th></tr>
+          <tr><td>SHP - 5263</td><td>USA → UK</td><td><span class="bar"><i style="width:82%"></i></span></td><td class="var">15 min</td></tr>
+          <tr><td>SHP - 0459</td><td>USA → JPN</td><td><span class="bar"><i style="width:64%"></i></span></td><td class="var">12 min</td></tr>
+          <tr><td>SHP - 9841</td><td>USA → CAN</td><td><span class="bar"><i style="width:47%"></i></span></td><td class="var">10 min</td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>⚖ Ship Balance <span class="r">Wireframe 3D</span></h3>
+        <div class="balwrap">
+          <div class="gauge"></div>
+          <div id="balanceScene"></div>
+        </div>
+        <div class="balnum">Nghiêng mạn: <b id="heelTxt">0.0°</b> · Trạng thái: <b>Standard</b></div>
+      </div>
+    </section>
+
+    <div class="hintline">Trong khung 3D: kéo chuột để xoay góc nhìn · lăn chuột để phóng to · tàu tự cập bến trong 60 giây, xem mô tả từng giai đoạn ở thẻ dưới-trái khung hình.</div>
   </div>
 </div>
-
-<div class="legend">
-  <div><span class="dot" style="background:#dc2626"></span>Tàu container SHINI STAR</div>
-  <div><span class="dot" style="background:#f59e0b"></span>Tàu lai LAI 01 (dắt mũi)</div>
-  <div><span class="dot" style="background:#22c55e"></span>Tàu lai LAI 02 (dắt lái)</div>
-  <div><span class="dot" style="background:#94a3b8"></span>Bến cảng + cẩu trục</div>
-</div>
-
-<div class="hint">Kéo chuột: xoay cảnh &nbsp;•&nbsp; Lăn chuột: phóng to / thu nhỏ &nbsp;•&nbsp; Chuột phải: di chuyển cảnh</div>
 
 <script type="importmap">
-{ "imports": {
-  "three": "./three.module.js",
-  "three/addons/": "./addons/"
-} }
+{ "imports": { "three": "./three.module.js", "three/addons/": "./addons/" } }
 </script>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-/* ============================ RENDERER / SCENE ============================ */
-const container = document.getElementById('scene');
+/* ================= RENDERER CHÍNH (HERO) ================= */
+const heroEl = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
-container.appendChild(renderer.domElement);
+renderer.toneMappingExposure = 1.1;
+heroEl.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8fc3e8);
-scene.fog = new THREE.Fog(0x8fc3e8, 200, 480);
+scene.background = new THREE.Color(0x06231f);
+scene.fog = new THREE.Fog(0x06231f, 240, 560);
 
-const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 1500);
-camera.position.set(26, 58, 138);
-
+const camera = new THREE.PerspectiveCamera(52, 2, 0.1, 1500);
+camera.position.set(30, 74, 104);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(-6, 3, 8);
+controls.target.set(-4, 2, 6);
 controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI * 0.49;
-controls.minDistance = 18; controls.maxDistance = 320;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.minDistance = 25; controls.maxDistance = 300;
 
-/* ============================ ÁNH SÁNG ============================ */
-const sun = new THREE.DirectionalLight(0xfff3d6, 2.6);
-sun.position.set(90, 120, 60);
+const sun = new THREE.DirectionalLight(0xd9f2ff, 2.0);
+sun.position.set(80, 110, 50);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -130; sun.shadow.camera.right = 130;
 sun.shadow.camera.top = 130; sun.shadow.camera.bottom = -130;
-sun.shadow.camera.far = 400;
-sun.shadow.bias = -0.0004;
+sun.shadow.camera.far = 380; sun.shadow.bias = -0.0004;
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xbfdcff, 0x2e5d43, 0.9));
+scene.add(new THREE.HemisphereLight(0x9fd8d2, 0x0a2a24, 0.85));
+const glow = new THREE.PointLight(0x22d3ee, 90, 120, 2); glow.position.set(0, 20, 34); scene.add(glow);
 
-/* ============================ TIỆN ÍCH ============================ */
-const MAT = (c, o={}) => new THREE.MeshStandardMaterial({ color:c, roughness:o.rough ?? 0.75, metalness:o.metal ?? 0.08, ...o.extra });
-function box(parent, w,h,d, mat, x=0,y=0,z=0, ry=0){
+/* ================= TIỆN ÍCH ================= */
+const MAT = (c, o={}) => new THREE.MeshStandardMaterial({ color:c, roughness:o.rough ?? 0.75, metalness:o.metal ?? 0.08 });
+function box(parent, w,h,d, mat, x=0,y=0,z=0){
   const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
-  m.position.set(x,y,z); m.rotation.y = ry;
-  m.castShadow = true; m.receiveShadow = true;
-  parent.add(m); return m;
+  m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
 }
 function cyl(parent, rt,rb,h, mat, x=0,y=0,z=0, seg=14){
   const m = new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg), mat);
-  m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true;
-  parent.add(m); return m;
+  m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
 }
-// Thân tàu từ hình chiếu bằng (shape mặt phẳng) đùn lên theo chiều cao
 function makeHullGeo(sternX, bowX, halfW, height){
   const s = new THREE.Shape();
   s.moveTo(sternX, -halfW);
@@ -148,15 +325,12 @@ function makeHullGeo(sternX, bowX, halfW, height){
   s.quadraticCurveTo(bowX + halfW*0.4, 0, bowX - halfW*1.6, halfW);
   s.lineTo(sternX, halfW);
   s.quadraticCurveTo(sternX - halfW*0.35, 0, sternX, -halfW);
-  const g = new THREE.ExtrudeGeometry(s, { depth: height, bevelEnabled:false });
-  return g;
+  return new THREE.ExtrudeGeometry(s, { depth: height, bevelEnabled:false });
 }
 function hullMesh(sternX, bowX, halfW, height, mat, baseY){
   const m = new THREE.Mesh(makeHullGeo(sternX, bowX, halfW, height), mat);
-  m.rotation.x = -Math.PI/2;
-  m.position.y = baseY;
-  m.castShadow = true; m.receiveShadow = true;
-  return m;
+  m.rotation.x = -Math.PI/2; m.position.y = baseY;
+  m.castShadow = true; m.receiveShadow = true; return m;
 }
 function makeLabel(text, bg='#0b3a5c'){
   const c = document.createElement('canvas'); c.width = 640; c.height = 144;
@@ -167,304 +341,322 @@ function makeLabel(text, bg='#0b3a5c'){
   x.textAlign='center'; x.textBaseline='middle'; x.fillText(text, 320, 76);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, depthTest:false, transparent:true }));
-  sp.scale.set(17, 3.8, 1); sp.renderOrder = 20;
-  return sp;
+  sp.scale.set(15, 3.4, 1); sp.renderOrder = 20; return sp;
 }
-// Thanh/vật nối giữa 2 điểm (dây thừng, dây kéo)
 function beamBetween(mesh, a, b){
   const dir = new THREE.Vector3().subVectors(b, a);
   const len = dir.length();
   mesh.position.copy(a).addScaledVector(dir, 0.5);
-  mesh.scale.set(1, len, 1);
+  mesh.scale.y = len;
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize());
 }
-function ropeMesh(radius, color){
+function ropeMesh(radius, color, emissive=0){
   const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 1, 6),
-    new THREE.MeshStandardMaterial({ color, roughness:.9 }));
-  m.castShadow = false; scene.add(m); return m;
+    new THREE.MeshStandardMaterial({ color, roughness:.9, emissive, emissiveIntensity:.6 }));
+  scene.add(m); return m;
 }
 
-/* ============================ MẶT NƯỚC ============================ */
-const waterGeo = new THREE.PlaneGeometry(1100, 760, 110, 74);
+/* ================= MẶT BIỂN TỐI ================= */
+const waterGeo = new THREE.PlaneGeometry(900, 620, 100, 68);
 waterGeo.rotateX(-Math.PI/2);
 const waterBase = waterGeo.attributes.position.array.slice();
 const water = new THREE.Mesh(waterGeo, new THREE.MeshPhongMaterial({
-  color:0x0d6e8c, shininess:120, specular:0x99d8ff, transparent:true, opacity:0.96
+  color:0x0a4a44, shininess:160, specular:0x66e0d4, transparent:true, opacity:0.97
 }));
-water.position.set(0, 0, 30);
-water.receiveShadow = true;
-scene.add(water);
+water.position.set(0, 0, 40); water.receiveShadow = true; scene.add(water);
 
-// Mây
-const cloudMat = new THREE.MeshBasicMaterial({ color:0xffffff });
-for (let i=0;i<9;i++){
-  const g = new THREE.Group();
-  const n = 3 + Math.floor(Math.random()*3);
-  for (let j=0;j<n;j++){
-    const s = new THREE.Mesh(new THREE.SphereGeometry(4+Math.random()*5, 10, 8), cloudMat);
-    s.position.set(j*5 - n*2.2, Math.random()*1.5, Math.random()*3);
-    s.scale.y = 0.45; g.add(s);
-  }
-  g.position.set(-220 + Math.random()*440, 62 + Math.random()*26, -120 + Math.random()*200);
-  scene.add(g);
+// Tuyến đường dự kiến (dashed) từ ngoài khơi vào bến + vòng đích
+{
+  const pts = [ new THREE.Vector3(-34, 0.25, 48), new THREE.Vector3(-18, 0.25, 30),
+    new THREE.Vector3(-6, 0.25, 13), new THREE.Vector3(-1, 0.25, 1.5), new THREE.Vector3(0, 0.25, -8) ];
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(pts).getPoints(60)),
+    new THREE.LineDashedMaterial({ color:0x22d3ee, dashSize:2.2, gapSize:1.6, transparent:true, opacity:0.55 })
+  );
+  line.computeLineDistances(); scene.add(line);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(8.5, 9.3, 48),
+    new THREE.MeshBasicMaterial({ color:0x22d3ee, transparent:true, opacity:0.4, side:THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI/2; ring.position.set(0, 0.22, -8); scene.add(ring);
 }
 
-/* ============================ BẾN CẢNG ============================ */
+/* ================= BẾN CẢNG TỐI ================= */
 const DOCK_EDGE_Z = -14, QUAY_TOP = 2.4;
 const dock = new THREE.Group(); scene.add(dock);
-const concrete = MAT(0x9aa3ab, {rough:.95}), concreteDark = MAT(0x7c868e, {rough:.95});
-// Mặt bến + tường bến
-box(dock, 190, QUAY_TOP, 34, concrete, 0, QUAY_TOP/2, DOCK_EDGE_Z - 17);
-box(dock, 190, 0.35, 1.2, MAT(0xfacc15,{rough:.6}), 0, QUAY_TOP + 0.02, DOCK_EDGE_Z - 1.4); // vạch vàng an toàn
-// Đệm va (fender) dọc tường bến
-for (let x=-84; x<=84; x+=12) box(dock, 2.2, 3.4, 0.7, MAT(0x1f2937,{rough:.9}), x, 0.6, DOCK_EDGE_Z + 0.35);
-// Cọc buộc dây (bollard)
-const bollards = [];
+box(dock, 190, QUAY_TOP, 34, MAT(0x39434a,{rough:.95}), 0, QUAY_TOP/2, DOCK_EDGE_Z - 17);
+box(dock, 190, 0.35, 1.2, MAT(0xbfa02a,{rough:.6}), 0, QUAY_TOP + 0.02, DOCK_EDGE_Z - 1.4);
+for (let x=-84; x<=84; x+=12) box(dock, 2.2, 3.4, 0.7, MAT(0x11181c,{rough:.9}), x, 0.6, DOCK_EDGE_Z + 0.35);
+const bollardPts = [];
+for (const bx of [38, 12, -14, -40]) bollardPts.push(new THREE.Vector3(bx, QUAY_TOP + 1, DOCK_EDGE_Z - 0.9));
 for (let x=-84; x<=84; x+=14){
   const b = new THREE.Group(); b.position.set(x, QUAY_TOP, DOCK_EDGE_Z - 0.9);
-  cyl(b, 0.42, 0.55, 0.9, MAT(0x374151,{metal:.5, rough:.45}), 0, 0.45, 0);
-  cyl(b, 0.62, 0.62, 0.3, MAT(0x374151,{metal:.5, rough:.45}), 0, 0.95, 0);
-  dock.add(b); bollards.push(b);
+  cyl(b, 0.42, 0.55, 0.9, MAT(0x9aa7ad,{metal:.5, rough:.4}), 0, 0.45, 0);
+  cyl(b, 0.62, 0.62, 0.3, MAT(0x9aa7ad,{metal:.5, rough:.4}), 0, 0.95, 0);
+  dock.add(b);
 }
-// Cẩu trục container (gantry crane) ×2
 function gantryCrane(x){
   const g = new THREE.Group(); g.position.set(x, QUAY_TOP, -26);
-  const steel = MAT(0xf97316, {rough:.55, metal:.3});
+  const steel = MAT(0x8a4a26, {rough:.55, metal:.3});
   for (const dx of [-11, 11]) for (const dz of [-7, 7]){
     box(g, 1.4, 24, 1.4, steel, dx, 12, dz);
     box(g, 1, 1, 14.5, steel, dx, 6, 0); box(g, 1, 1, 14.5, steel, dx, 17, 0);
   }
-  box(g, 25, 2, 2, steel, 0, 24.6, 0);
-  box(g, 2, 2, 26, steel, 0, 24.6, 2);
-  box(g, 3.4, 2.6, 3.4, MAT(0x1e3a4c,{rough:.4}), 0, 22.6, 10); // cabin cẩu
-  const cable = cyl(g, 0.06, 0.06, 9, MAT(0x111827), 0, 19.5, 10, 6); cable.castShadow=false;
-  box(g, 6.2, 1, 2.6, MAT(0x374151,{metal:.4}), 0, 14.6, 10); // spreader
-  dock.add(g); return g;
+  box(g, 25, 2, 2, steel, 0, 24.6, 0); box(g, 2, 2, 26, steel, 0, 24.6, 2);
+  box(g, 3.4, 2.6, 3.4, MAT(0x14232c,{rough:.4}), 0, 22.6, 10);
+  cyl(g, 0.06, 0.06, 9, MAT(0x0b0f11), 0, 19.5, 10, 6);
+  box(g, 6.2, 1, 2.6, MAT(0x565f66,{metal:.4}), 0, 14.6, 10);
+  dock.add(g);
 }
 gantryCrane(-32); gantryCrane(34);
-// Nhà kho + container xếp trên bến
-box(dock, 52, 9, 14, MAT(0xb6c2cc,{rough:.85}), -58, QUAY_TOP + 4.5, -38);
-box(dock, 54, 1.2, 16, MAT(0x64748b,{rough:.8}), -58, QUAY_TOP + 9.6, -38);
-const contColors = [0x2563eb, 0xdc2626, 0x16a34a, 0xea580c, 0x0891b2, 0x9333ea, 0xca8a04];
+box(dock, 52, 9, 14, MAT(0x4c585f,{rough:.85}), -58, QUAY_TOP + 4.5, -38);
+box(dock, 54, 1.2, 16, MAT(0x333e45,{rough:.8}), -58, QUAY_TOP + 9.6, -38);
+
+// Bảng màu container trầm giống ảnh mẫu
+const contColors = [0x125352, 0x1f8a8c, 0xac481c, 0xc9a227, 0x1e3a5f, 0x6b6259, 0x8e9a61, 0x7a4a8c];
 function contBox(parent, x,y,z, ry, color, len=6){
   const g = new THREE.Group(); g.position.set(x,y,z); g.rotation.y = ry;
-  const m = MAT(color, {rough:.55, metal:.25});
-  box(g, len, 2.6, 2.45, m, 0, 1.3, 0);
+  box(g, len, 2.6, 2.45, MAT(color, {rough:.55, metal:.25}), 0, 1.3, 0);
   const ribMat = new THREE.MeshStandardMaterial({ color:0x000000, roughness:.6, transparent:true, opacity:.16 });
   for (let i=-2;i<=2;i++) box(g, 0.18, 2.3, 2.5, ribMat, i*(len/5.2), 1.3, 0);
   parent.add(g); return g;
 }
 let ci = 0;
-for (const [x,z,ry] of [[52,-36,0],[59,-36,0],[52,-33,0],[66,-36,0],[74,-38,.0],[74,-35,0]]){
-  contBox(dock, x, QUAY_TOP, z, ry, contColors[ci++ % contColors.length]);
-  if (ci % 3 === 0) contBox(dock, x, QUAY_TOP + 2.6, z, ry, contColors[ci++ % contColors.length]);
+for (const [x,z] of [[52,-36],[59,-36],[52,-33],[66,-36],[74,-38],[74,-35]]){
+  contBox(dock, x, QUAY_TOP, z, 0, contColors[ci++ % contColors.length]);
+  if (ci % 3 === 0) contBox(dock, x, QUAY_TOP + 2.6, z, 0, contColors[ci++ % contColors.length]);
 }
-// Cột đèn bến
 for (const x of [-70, -20, 30, 80]){
-  cyl(dock, 0.16, 0.22, 13, MAT(0x475569,{metal:.5}), x, QUAY_TOP + 6.5, -18);
-  const lamp = box(dock, 2.6, 0.35, 0.8, MAT(0xfef08a,{rough:.3}), x, QUAY_TOP + 13, -18);
-  lamp.material = new THREE.MeshStandardMaterial({ color:0xfef08a, emissive:0xffedb0, emissiveIntensity:.7 });
+  cyl(dock, 0.16, 0.22, 13, MAT(0x5b6a71,{metal:.5}), x, QUAY_TOP + 6.5, -18);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8),
+    new THREE.MeshStandardMaterial({ color:0xfff2b0, emissive:0xffe58a, emissiveIntensity:2.4 }));
+  lamp.position.set(x, QUAY_TOP + 13.2, -18); dock.add(lamp);
 }
-const dockLabel = makeLabel('BẾN CẢNG', '#475569'); dockLabel.position.set(0, 20, -30); scene.add(dockLabel);
 
-/* ============================ TÀU CONTAINER LỚN ============================ */
+/* ================= TÀU CONTAINER ================= */
 const ship = new THREE.Group(); scene.add(ship);
-const SHIP_HW = 5.5; // nửa bề ngang
-ship.add(hullMesh(-30, 35, SHIP_HW, 2.2, MAT(0xb91c1c,{rough:.6, metal:.2}), -1.7));       // phần dưới nước: đỏ
-ship.add(hullMesh(-30, 35, SHIP_HW, 3.0, MAT(0x14324f,{rough:.5, metal:.3}), 0.5));          // phần trên: xanh đậm
-// Boong tàu
+const SHIP_HW = 5.5;
+ship.add(hullMesh(-30, 35, SHIP_HW, 2.2, MAT(0x6e1d1d,{rough:.6, metal:.2}), -1.7));
+ship.add(hullMesh(-30, 35, SHIP_HW, 3.0, MAT(0x131c26,{rough:.45, metal:.35}), 0.5));
 {
   const s = new THREE.Shape();
   s.moveTo(-29.6, -5.2); s.lineTo(17, -5.2); s.quadraticCurveTo(33, 0, 17, 5.2); s.lineTo(-29.6, 5.2);
   s.quadraticCurveTo(-31, 0, -29.6, -5.2);
-  const deck = new THREE.Mesh(new THREE.ShapeGeometry(s), MAT(0x3f5a4c,{rough:.9}));
+  const deck = new THREE.Mesh(new THREE.ShapeGeometry(s), MAT(0x27333a,{rough:.9}));
   deck.rotation.x = -Math.PI/2; deck.rotation.z = Math.PI; deck.position.y = 3.52;
   deck.receiveShadow = true; ship.add(deck);
 }
-// Bầu mũi tàu (bulb) dưới nước
-const bulb = new THREE.Mesh(new THREE.SphereGeometry(1.7, 14, 10), MAT(0xb91c1c,{rough:.6}));
+const bulb = new THREE.Mesh(new THREE.SphereGeometry(1.7, 14, 10), MAT(0x6e1d1d,{rough:.6}));
 bulb.scale.set(2.6, 1, 1); bulb.position.set(33.5, -1.2, 0); ship.add(bulb);
-// Container trên boong: 4 hàng × nhiều cột, xếp 2–3 lớp
 ci = 0;
 for (let cx = -19; cx <= 14; cx += 6.6){
   for (const rz of [-3.9, -1.3, 1.3, 3.9]){
     const levels = 2 + ((Math.round(cx*10) + Math.round(rz*10)) % 2 === 0 ? 1 : 0);
     for (let l=0; l<levels; l++)
-      contBox(ship, cx, 3.55 + l*2.62, rz === -3.9 || rz === 3.9 ? rz*0.94 : rz, 0, contColors[ci++ % contColors.length]);
+      contBox(ship, cx, 3.55 + l*2.62, (rz === -3.9 || rz === 3.9) ? rz*0.94 : rz, 0, contColors[ci++ % contColors.length]);
   }
 }
-// Tháp chỉ huy (superstructure) ở đuôi tàu
 const tower = new THREE.Group(); tower.position.set(-25.5, 3.5, 0); ship.add(tower);
-for (let l=0; l<4; l++) box(tower, 6.5, 2.5, 8.6 - l*0.5, MAT(0xf1f5f9,{rough:.5}), 0, 1.25 + l*2.5, 0);
-box(tower, 7.6, 2.4, 10.6, MAT(0xf8fafc,{rough:.45}), 0, 11.2, 0); // đài chỉ huy rộng
-box(tower, 7.7, 1.1, 10.7, MAT(0x0f2536,{rough:.25, metal:.4}), 0, 11.5, 0); // kính đài chỉ huy
-cyl(tower, 0.12, 0.12, 5.5, MAT(0x334155,{metal:.5}), 1.5, 15, 0, 8); // cột radar
-box(tower, 2.6, 0.35, 0.35, MAT(0x334155,{metal:.5}), 1.5, 17.4, 0);
+for (let l=0; l<4; l++) box(tower, 6.5, 2.5, 8.6 - l*0.5, MAT(0xd7dee2,{rough:.5}), 0, 1.25 + l*2.5, 0);
+box(tower, 7.6, 2.4, 10.6, MAT(0xe6ecef,{rough:.45}), 0, 11.2, 0);
+const winBand = box(tower, 7.7, 1.1, 10.7, MAT(0x2a1f08,{rough:.3}), 0, 11.5, 0);
+winBand.material = new THREE.MeshStandardMaterial({ color:0x3a2c10, emissive:0xffb84d, emissiveIntensity:.85, roughness:.3 });
+cyl(tower, 0.12, 0.12, 5.5, MAT(0x9aa7ad,{metal:.5}), 1.5, 15, 0, 8);
 const radarBar = box(tower, 0.3, 0.18, 2.4, MAT(0xe2e8f0,{metal:.3}), 1.5, 16.4, 0);
-// Ống khói
+box(tower, 2.6, 0.35, 0.35, MAT(0x9aa7ad,{metal:.5}), 1.5, 17.4, 0);
 const funnel = new THREE.Group(); funnel.position.set(-29.5, 3.5, 0); ship.add(funnel);
-box(funnel, 3.2, 6.5, 4.2, MAT(0x14324f,{rough:.5, metal:.25}), 0, 3.25, 0);
-box(funnel, 3.3, 1.6, 4.3, MAT(0xf59e0b,{rough:.5}), 0, 5.4, 0);
-// Xuồng cứu sinh cam 2 bên tháp
+box(funnel, 3.2, 6.5, 4.2, MAT(0x131c26,{rough:.5, metal:.25}), 0, 3.25, 0);
+box(funnel, 3.3, 1.6, 4.3, MAT(0xc9a227,{rough:.5}), 0, 5.4, 0);
 for (const sz of [-5.4, 5.4]){
-  const boat = new THREE.Mesh(new THREE.CapsuleGeometry(0.75, 2.6, 4, 10), MAT(0xea580c,{rough:.5}));
+  const boat = new THREE.Mesh(new THREE.CapsuleGeometry(0.75, 2.6, 4, 10), MAT(0xac481c,{rough:.5}));
   boat.rotation.z = Math.PI/2; boat.position.set(-25.5, 9.4, sz); boat.castShadow = true; ship.add(boat);
 }
-// Đèn hiệu: mạn phải xanh, mạn trái đỏ, mũi trắng
 function navLight(color, x,y,z){
   const m = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8),
-    new THREE.MeshStandardMaterial({ color, emissive:color, emissiveIntensity:2.2 }));
+    new THREE.MeshStandardMaterial({ color, emissive:color, emissiveIntensity:2.4 }));
   m.position.set(x,y,z); ship.add(m); return m;
 }
 navLight(0x22ff66, 20, 5.4, 5.6); navLight(0xff2222, 20, 5.4, -5.6); navLight(0xfff6c9, 33, 6.4, 0);
-// Tên tàu 2 bên mũi
-function shipName(){
-  const c = document.createElement('canvas'); c.width=512; c.height=96;
-  const x = c.getContext('2d'); x.fillStyle='#fff'; x.font='bold 54px "Segoe UI"';
-  x.textAlign='center'; x.textBaseline='middle'; x.fillText('SHINI STAR', 256, 50);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  const p = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.7),
-    new THREE.MeshBasicMaterial({ map:t, transparent:true }));
-  return p;
-}
-const nameR = shipName(); nameR.position.set(24.5, 1.9, 5.45); nameR.rotation.y = 0.1; ship.add(nameR);
-const nameL = shipName(); nameL.position.set(24.5, 1.9, -5.45); nameL.rotation.y = Math.PI - 0.1; ship.add(nameL);
-const shipLabel = makeLabel('TÀU CONTAINER', '#b91c1c'); shipLabel.position.set(0, 22, 0); ship.add(shipLabel);
-// Điểm buộc dây trên tàu (tọa độ local, phía mạn trái hướng vào bến = -Z)
+const shipLabel = makeLabel('SHINI STAR', '#7c2d12'); shipLabel.position.set(0, 21, 0); ship.add(shipLabel);
 const cleats = [
   new THREE.Vector3(27, 3.6, -5.2), new THREE.Vector3(9, 3.6, -5.45),
   new THREE.Vector3(-11, 3.6, -5.45), new THREE.Vector3(-27, 3.6, -5.2)
 ];
 
-/* ============================ TÀU LAI DẮT ============================ */
+/* ================= 2 TÀU LAI ================= */
 function buildTug(name, accent, labelBg){
   const g = new THREE.Group();
-  g.add(hullMesh(-5.6, 6.6, 2.3, 1.1, MAT(0xb91c1c,{rough:.6}), -0.95));   // đáy đỏ
-  g.add(hullMesh(-5.6, 6.6, 2.3, 1.5, MAT(0x111827,{rough:.5, metal:.2}), 0.15)); // thân đen
-  // Boong
-  box(g, 10.6, 0.18, 4.1, MAT(0x374151,{rough:.8}), -0.2, 1.72, 0);
-  // Cabin + đài lái
-  box(g, 3.6, 1.7, 3.2, MAT(0xf8fafc,{rough:.45}), 0.4, 2.6, 0);
-  box(g, 3.0, 1.5, 3.5, MAT(0xf1f5f9,{rough:.45}), 0.4, 4.15, 0);
-  box(g, 3.05, 0.8, 3.55, MAT(0x0f2536,{rough:.25, metal:.4}), 0.4, 4.4, 0); // kính
-  box(g, 3.7, 0.35, 3.3, MAT(accent,{rough:.5}), 0.4, 5.05, 0); // nóc màu nhận diện
-  cyl(g, 0.09, 0.09, 2.6, MAT(0x334155,{metal:.5}), 1.6, 6.2, 0, 8); // cột đèn
-  // Ống khói đôi
-  cyl(g, 0.34, 0.38, 1.7, MAT(0x1f2937,{metal:.3}), -2.2, 3.4, -0.8, 10);
-  cyl(g, 0.34, 0.38, 1.7, MAT(0x1f2937,{metal:.3}), -2.2, 3.4, 0.8, 10);
-  // Lốp đệm va quanh mạn
-  const tireMat = MAT(0x0a0a0a, {rough:.95});
+  g.add(hullMesh(-5.6, 6.6, 2.3, 1.1, MAT(0x6e1d1d,{rough:.6}), -0.95));
+  g.add(hullMesh(-5.6, 6.6, 2.3, 1.5, MAT(0x0d1117,{rough:.5, metal:.2}), 0.15));
+  box(g, 10.6, 0.18, 4.1, MAT(0x2b343a,{rough:.8}), -0.2, 1.72, 0);
+  box(g, 3.6, 1.7, 3.2, MAT(0xd7dee2,{rough:.45}), 0.4, 2.6, 0);
+  box(g, 3.0, 1.5, 3.5, MAT(0xe6ecef,{rough:.45}), 0.4, 4.15, 0);
+  const tw = box(g, 3.05, 0.8, 3.55, MAT(0x2a1f08,{rough:.3}), 0.4, 4.4, 0);
+  tw.material = new THREE.MeshStandardMaterial({ color:0x3a2c10, emissive:0xffb84d, emissiveIntensity:.7, roughness:.3 });
+  box(g, 3.7, 0.35, 3.3, MAT(accent,{rough:.5}), 0.4, 5.05, 0);
+  cyl(g, 0.09, 0.09, 2.6, MAT(0x9aa7ad,{metal:.5}), 1.6, 6.2, 0, 8);
+  cyl(g, 0.34, 0.38, 1.7, MAT(0x1c2329,{metal:.3}), -2.2, 3.4, -0.8, 10);
+  cyl(g, 0.34, 0.38, 1.7, MAT(0x1c2329,{metal:.3}), -2.2, 3.4, 0.8, 10);
+  const tireMat = MAT(0x05070a, {rough:.95});
   for (const sx of [-4.4, -2.4, -0.4, 1.6, 3.6]) for (const sz of [-2.42, 2.42]){
     const tire = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.2, 8, 14), tireMat);
     tire.position.set(sx, 0.9, sz); tire.castShadow = true; g.add(tire);
   }
-  for (let i=0;i<3;i++){ // đệm mũi để đẩy tàu lớn
+  for (let i=0;i<3;i++){
     const tire = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.2, 8, 14), tireMat);
     tire.rotation.y = Math.PI/2; tire.position.set(6.35, 0.55 + i*0.72, 0); g.add(tire);
   }
-  // Bích kéo phía đuôi + tời
   cyl(g, 0.16, 0.16, 1.1, MAT(accent,{metal:.4, rough:.4}), -4.4, 2.2, 0, 8);
-  box(g, 1.4, 0.7, 1.4, MAT(0x4b5563,{metal:.4}), -3.2, 2.05, 0);
-  const lbl = makeLabel(name, labelBg); lbl.position.set(0, 8.6, 0); lbl.scale.set(11, 2.5, 1); g.add(lbl);
+  box(g, 1.4, 0.7, 1.4, MAT(0x39424a,{metal:.4}), -3.2, 2.05, 0);
+  const lbl = makeLabel(name, labelBg); lbl.position.set(0, 8.4, 0); lbl.scale.set(10.5, 2.4, 1); g.add(lbl);
   g.userData.label = lbl;
-  scene.add(g);
-  return g;
+  scene.add(g); return g;
 }
-const tug1 = buildTug('LAI 01', 0xf59e0b, '#b45309');
-const tug2 = buildTug('LAI 02', 0x22c55e, '#15803d');
+const tug1 = buildTug('LAI 01', 0xf59e0b, '#92400e');
+const tug2 = buildTug('LAI 02', 0x22c55e, '#14532d');
 
-/* ============================ DÂY KÉO + DÂY BUỘC ============================ */
-const towRope = ropeMesh(0.09, 0x78350f);
+/* ================= DÂY + BỌT SÓNG ================= */
+const towRope = ropeMesh(0.09, 0xd8b26a);
 const moorRopes = [ropeMesh(0.11, 0xfde68a), ropeMesh(0.11, 0xfde68a), ropeMesh(0.11, 0xfde68a), ropeMesh(0.11, 0xfde68a)];
-const bollardPts = [
-  new THREE.Vector3(38, QUAY_TOP + 1, DOCK_EDGE_Z - 0.9), new THREE.Vector3(12, QUAY_TOP + 1, DOCK_EDGE_Z - 0.9),
-  new THREE.Vector3(-14, QUAY_TOP + 1, DOCK_EDGE_Z - 0.9), new THREE.Vector3(-40, QUAY_TOP + 1, DOCK_EDGE_Z - 0.9)
-];
-
-/* ============================ BỌT SÓNG (WAKE) ============================ */
 const foamPool = [];
-const foamMat = new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0, depthWrite:false });
 for (let i=0;i<130;i++){
-  const m = new THREE.Mesh(new THREE.CircleGeometry(1, 10), foamMat.clone());
-  m.rotation.x = -Math.PI/2; m.position.y = 0.06; m.visible = false;
+  const m = new THREE.Mesh(new THREE.CircleGeometry(1, 10),
+    new THREE.MeshBasicMaterial({ color:0xbdf3ec, transparent:true, opacity:0, depthWrite:false }));
+  m.rotation.x = -Math.PI/2; m.position.y = 0.07; m.visible = false;
   scene.add(m); foamPool.push({ m, life:0, max:1, grow:1 });
 }
 let foamIdx = 0;
 function spawnFoam(x, z, size, life){
   const f = foamPool[foamIdx++ % foamPool.length];
-  f.m.position.set(x, 0.06, z); f.m.visible = true;
-  f.life = life; f.max = life; f.grow = size;
-  f.m.scale.setScalar(size * 0.4);
+  f.m.position.set(x, 0.07, z); f.m.visible = true;
+  f.life = life; f.max = life; f.grow = size; f.m.scale.setScalar(size * 0.4);
 }
 
-/* ============================ QUỸ ĐẠO CẬP BẾN ============================ */
-const DUR = 60; // giây cho 1 lượt cập bến ở tốc độ 1×
+/* ================= SHIP BALANCE: TÀU WIREFRAME 3D ================= */
+const balEl = document.getElementById('balanceScene');
+const balRenderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+balRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+balEl.appendChild(balRenderer.domElement);
+const balScene = new THREE.Scene();
+const balCam = new THREE.PerspectiveCamera(42, 2, 0.1, 100);
+balCam.position.set(16, 6, 17); balCam.lookAt(0, 1.5, 0);
+const wireMat = new THREE.LineBasicMaterial({ color:0x22d3ee, transparent:true, opacity:0.9 });
+function wireBox(w,h,d,x,y,z){
+  const l = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d)), wireMat);
+  l.position.set(x,y,z); return l;
+}
+const balShip = new THREE.Group();
+{
+  const hullEdges = new THREE.LineSegments(new THREE.EdgesGeometry(makeHullGeo(-7.5, 8.75, 1.38, 1.4), 12), wireMat);
+  hullEdges.rotation.x = -Math.PI/2; hullEdges.position.y = 0.4; balShip.add(hullEdges);
+  const hullEdges2 = new THREE.LineSegments(new THREE.EdgesGeometry(makeHullGeo(-7.5, 8.75, 1.38, 1.1), 12), wireMat);
+  hullEdges2.rotation.x = -Math.PI/2; hullEdges2.position.y = 1.8; balShip.add(hullEdges2);
+  let bi = 0;
+  for (let cx=-4.6; cx<=3.4; cx+=2.05) for (const rz of [-0.75, 0.75])
+    for (let l=0; l<2; l++) balShip.add(wireBox(1.9, 0.85, 1.15, cx, 2.75 + l*0.87, rz));
+  balShip.add(wireBox(1.9, 3.4, 2.4, -6.2, 3.6, 0));
+  balShip.add(wireBox(0.9, 1.6, 1.1, -7.3, 3.2, 0));
+  const base = new THREE.Mesh(new THREE.CircleGeometry(9.6, 40),
+    new THREE.MeshBasicMaterial({ color:0x22d3ee, transparent:true, opacity:0.07, side:THREE.DoubleSide }));
+  base.rotation.x = -Math.PI/2; base.position.y = -0.4; balShip.add(base);
+  const ringPts = [];
+  for (let i=0;i<=64;i++){ const a = i/64*Math.PI*2; ringPts.push(new THREE.Vector3(Math.cos(a)*9.6, -0.4, Math.sin(a)*9.6)); }
+  balShip.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts),
+    new THREE.LineBasicMaterial({ color:0x22d3ee, transparent:true, opacity:0.45 })));
+}
+balScene.add(balShip);
+
+/* ================= FUEL DOTS ================= */
+{
+  const wrap = document.getElementById('fuelDots');
+  const cols = ['#facc15', '#f8f8f9', '#f97316'];
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i=0;i<64;i++){
+    const d = document.createElement('i');
+    const r = rnd();
+    d.style.background = r < 0.62 ? cols[0] : r < 0.84 ? cols[2] : cols[1];
+    d.style.opacity = 0.55 + rnd() * 0.45;
+    wrap.appendChild(d);
+  }
+}
+
+/* ================= QUỸ ĐẠO + GIAI ĐOẠN ================= */
+const DUR = 60;
 function smoother(a, b, x){ const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t*t*t*(t*(t*6-15)+10); }
 function sampleKeys(keys, t){
   if (t <= keys[0][0]) return keys[0].slice(1);
   for (let i=0;i<keys.length-1;i++){
     const [t0, ...v0] = keys[i], [t1, ...v1] = keys[i+1];
-    if (t <= t1){
-      const k = smoother(t0, t1, t);
-      return v0.map((v, j) => v + (v1[j] - v) * k);
-    }
+    if (t <= t1){ const k = smoother(t0, t1, t); return v0.map((v, j) => v + (v1[j] - v) * k); }
   }
   return keys[keys.length-1].slice(1);
 }
-// Tàu lớn: [t, x, z, yaw]
 const shipKeys = [
   [0.00, -34, 48, 0.62], [0.30, -18, 30, 0.46], [0.55, -6, 13, 0.22],
   [0.75, -1, 1.5, 0.07], [0.90, 0, -5.4, 0.015], [1.00, 0, -8, 0]
 ];
-// Tàu lai theo tọa độ LOCAL của tàu lớn: [t, localX, localZ, yawTươngĐối]
-const tug1Keys = [ // dắt mũi: kéo ở phía trước → về sau ép mạn ở mũi
+const tug1Keys = [
   [0.00, 46, 13, 0.05], [0.30, 44, 12, 0.05], [0.55, 38, 15, 0.5],
   [0.75, 27, 10.5, 1.35], [0.90, 23, 8.4, Math.PI/2], [1.00, 23, 8.35, Math.PI/2]
 ];
-const tug2Keys = [ // dắt lái: giữ đuôi → về sau ép mạn ở lái
+const tug2Keys = [
   [0.00, -40, 12, 0.25], [0.30, -38, 12.5, 0.25], [0.55, -33, 11, 0.7],
   [0.75, -25, 9.2, 1.4], [0.90, -21, 8.4, Math.PI/2], [1.00, -21, 8.35, Math.PI/2]
 ];
 const PHASES = [
-  { to:0.30, name:'Giai đoạn 1 / 4 — TIẾP CẬN', desc:'Tàu container SHINI STAR giảm tốc, tiến vào luồng trước bến. Tàu lai LAI 01 đã bắt dây kéo ở mũi, LAI 02 áp sát phía lái để giữ hướng — tàu lớn tự di chuyển rất khó ở tốc độ chậm nên phải nhờ tàu lai.' },
-  { to:0.55, name:'Giai đoạn 2 / 4 — LAI DẮT & CHỈNH HƯỚNG', desc:'Hai tàu lai phối hợp: LAI 01 kéo mũi tàu quay dần song song với bến, LAI 02 ghì phía lái chống xoay đuôi. Mũi tàu từ góc nghiêng ~35° được đưa về gần song song với cầu cảng.' },
-  { to:0.88, name:'Giai đoạn 3 / 4 — ÁP MẠN', desc:'Tàu lớn đã song song với bến. Hai tàu lai thu dây kéo, chuyển sang tư thế ĐẨY: tỳ mũi vào mạn tàu lớn, ép con tàu hàng chục nghìn tấn trượt ngang thật chậm vào sát tường bến.' },
-  { to:1.01, name:'Giai đoạn 4 / 4 — BUỘC DÂY & HOÀN TẤT', desc:'Tàu áp sát bến, thủy thủ ném dây buộc vào các cọc bollard trên bến (dây mũi, dây lái và 2 dây chéo giữ tàu không trôi). Cập bến hoàn tất — cẩu trục sẵn sàng bốc dỡ container. 🎉' },
+  { to:0.30, name:'Giai đoạn 1 / 4 — TIẾP CẬN', desc:'SHINI STAR giảm tốc tiến vào luồng trước bến. LAI 01 bắt dây kéo ở mũi, LAI 02 áp sát phía lái giữ hướng — tàu lớn ở tốc độ chậm rất khó tự điều khiển nên phải nhờ tàu lai.' },
+  { to:0.55, name:'Giai đoạn 2 / 4 — LAI DẮT & CHỈNH HƯỚNG', desc:'LAI 01 kéo mũi tàu quay dần song song với bến, LAI 02 ghì phía lái chống xoay đuôi. Mũi tàu từ góc nghiêng ~35° được đưa về gần song song cầu cảng.' },
+  { to:0.88, name:'Giai đoạn 3 / 4 — ÁP MẠN', desc:'Tàu đã song song với bến. Hai tàu lai thu dây kéo, chuyển sang tư thế ĐẨY: tỳ mũi vào mạn, ép con tàu trượt ngang thật chậm vào sát tường bến.' },
+  { to:1.01, name:'Giai đoạn 4 / 4 — BUỘC DÂY & HOÀN TẤT', desc:'Tàu áp sát bến, thủy thủ buộc dây vào các cọc bollard (dây mũi, dây lái, 2 dây chéo). Cập bến hoàn tất — cẩu trục sẵn sàng bốc dỡ container. 🎉' },
 ];
 
-/* ============================ TRẠNG THÁI & UI ============================ */
-let tProg = 0, playing = true, speedMul = 1, camMode = 'free', elapsed = 0;
+/* ================= UI STATE ================= */
+let tProg = 0, playing = true, speedMul = 1, elapsed = 0, phaseIdx = -1;
 const $ = id => document.getElementById(id);
 const scrub = $('scrub');
 scrub.addEventListener('input', () => { tProg = scrub.value / 1000; });
-$('btnPlay').addEventListener('click', e => { playing = !playing; e.target.textContent = playing ? '⏸ Tạm dừng' : '▶ Chạy tiếp'; });
-$('btnReplay').addEventListener('click', () => { tProg = 0; playing = true; $('btnPlay').textContent = '⏸ Tạm dừng'; });
+$('btnPlay').addEventListener('click', e => { playing = !playing; e.target.textContent = playing ? '⏸ Dừng' : '▶ Chạy'; });
+$('btnReplay').addEventListener('click', () => { tProg = 0; playing = true; $('btnPlay').textContent = '⏸ Dừng'; });
 $('btnSpeed').addEventListener('click', e => {
   speedMul = speedMul === 1 ? 2 : speedMul === 2 ? 4 : 1;
-  e.target.textContent = 'Tốc độ: ' + speedMul + '×';
-});
-document.querySelectorAll('.camBtn').forEach(b => b.addEventListener('click', () => {
-  camMode = b.dataset.cam;
-  document.querySelectorAll('.camBtn').forEach(x => x.classList.toggle('active', x === b));
-  controls.enabled = (camMode === 'free');
-}));
-$('chkLabels').addEventListener('change', e => {
-  const v = e.target.checked;
-  shipLabel.visible = v; dockLabel.visible = v;
-  tug1.userData.label.visible = v; tug2.userData.label.visible = v;
+  e.target.textContent = speedMul + '×';
 });
 
-/* ============================ VÒNG LẶP ============================ */
+/* ================= MARKER TRACKING (chiếu 3D → 2D) ================= */
+const markers = [
+  { el:$('mkPin'), local:new THREE.Vector3(31, 7.5, 0), obj:() => ship },
+  { el:$('mkTri'), local:new THREE.Vector3(-2, 13.5, 0), obj:() => ship },
+  { el:$('mkDot'), local:new THREE.Vector3(-29, 8, 0), obj:() => ship },
+  { el:$('mkSig'), local:new THREE.Vector3(-6, 3.4, 0), obj:() => tug1 },
+];
+const PV = new THREE.Vector3();
+function updateMarkers(){
+  const r = heroEl.getBoundingClientRect();
+  for (const mk of markers){
+    mk.obj().localToWorld(PV.copy(mk.local));
+    PV.project(camera);
+    const vis = PV.z < 1;
+    mk.el.style.display = vis ? 'block' : 'none';
+    if (vis){
+      mk.el.style.left = ((PV.x * 0.5 + 0.5) * r.width) + 'px';
+      mk.el.style.top = ((-PV.y * 0.5 + 0.5) * r.height) + 'px';
+    }
+  }
+}
+
+/* ================= VÒNG LẶP ================= */
 const timer = new THREE.Timer(); timer.connect(document);
 const V = new THREE.Vector3(), V2 = new THREE.Vector3();
-let foamTimer = 0, phaseIdx = -1;
-const camTargetPos = new THREE.Vector3(), camTargetLook = new THREE.Vector3();
+let foamTimer = 0;
 
 function placeTug(tug, keys, shipPos, shipYaw, time, bobPhase){
   const [lx, lz, ry] = sampleKeys(keys, tProg);
   const cos = Math.cos(shipYaw), sin = Math.sin(shipYaw);
   tug.position.set(shipPos.x + lx*cos + lz*sin, Math.sin(time*1.7 + bobPhase)*0.14, shipPos.z - lx*sin + lz*cos);
   tug.rotation.set(Math.sin(time*1.3 + bobPhase)*0.02, shipYaw + ry, Math.sin(time*1.9 + bobPhase)*0.03);
+}
+function fmtETA(t){
+  const totalMin = Math.round((1 - t) * (18 * 60 + 40));
+  return Math.floor(totalMin / 60) + ' h ' + String(totalMin % 60).padStart(2, '0') + ' m';
 }
 
 function animate(){
@@ -473,35 +665,28 @@ function animate(){
   elapsed += dt;
   if (playing){
     tProg += dt * speedMul / DUR;
-    if (tProg >= 1){
-      if ($('chkAuto').checked){ tProg = 0; } else { tProg = 1; playing = false; $('btnPlay').textContent = '▶ Chạy lại từ đầu'; }
-    }
+    if (tProg >= 1){ tProg = 1; playing = false; $('btnPlay').textContent = '▶ Chạy lại'; }
     scrub.value = Math.round(tProg * 1000);
   }
 
-  /* --- Tàu lớn --- */
   const [sx, sz, syaw] = sampleKeys(shipKeys, tProg);
   const prevX = ship.position.x, prevZ = ship.position.z;
   ship.position.set(sx, Math.sin(elapsed*0.9)*0.1, sz);
   ship.rotation.y = syaw;
-  ship.rotation.z = Math.sin(elapsed*0.7)*0.004;
-  const shipSpeed = Math.hypot(sx - prevX, sz - prevZ) / Math.max(dt, 0.001); // đơn vị/giây (khi đang chạy)
+  const heel = Math.sin(elapsed*0.75) * (1 - tProg*0.75) * 0.012;
+  ship.rotation.z = heel;
+  const shipSpeed = Math.hypot(sx - prevX, sz - prevZ) / Math.max(dt, 0.001);
   radarBar.rotation.y = elapsed * 2.2;
 
-  /* --- Hai tàu lai --- */
   placeTug(tug1, tug1Keys, ship.position, syaw, elapsed, 0);
   placeTug(tug2, tug2Keys, ship.position, syaw, elapsed, 2.4);
 
-  /* --- Dây kéo mũi (hiện khi t < 0.62) --- */
-  const towOn = tProg < 0.62;
-  towRope.visible = towOn;
-  if (towOn){
+  towRope.visible = tProg < 0.62;
+  if (towRope.visible){
     tug1.localToWorld(V.set(-5.2, 2.4, 0));
     ship.localToWorld(V2.set(31, 3.6, 2.5));
     beamBetween(towRope, V, V2);
-    towRope.material.opacity = 1;
   }
-  /* --- Dây buộc vào bến (hiện dần khi t > 0.9) --- */
   const moorK = smoother(0.9, 0.99, tProg);
   moorRopes.forEach((r, i) => {
     r.visible = moorK > 0.02;
@@ -512,10 +697,8 @@ function animate(){
     }
   });
 
-  /* --- Bọt sóng sau đuôi tàu khi di chuyển --- */
   foamTimer -= dt;
-  const moving = playing && tProg < 0.98;
-  if (moving && foamTimer <= 0){
+  if (playing && tProg < 0.98 && foamTimer <= 0){
     foamTimer = 0.07;
     const stern = ship.localToWorld(V.set(-31, 0, 0));
     if (shipSpeed > 0.4) spawnFoam(stern.x + (Math.random()-0.5)*3, stern.z + (Math.random()-0.5)*4, 2.6, 1.6);
@@ -530,48 +713,57 @@ function animate(){
     if (f.life <= 0){ f.m.visible = false; continue; }
     const k = 1 - f.life / f.max;
     f.m.scale.setScalar(f.grow * (0.4 + k * 1.5));
-    f.m.material.opacity = 0.5 * (1 - k);
+    f.m.material.opacity = 0.45 * (1 - k);
   }
 
-  /* --- Sóng nước --- */
   const pos = waterGeo.attributes.position;
   for (let i=0;i<pos.count;i++){
     const bx = waterBase[i*3], bz = waterBase[i*3+2];
-    pos.array[i*3+1] = Math.sin(bx*0.11 + elapsed*1.15) * 0.22 + Math.cos(bz*0.13 + elapsed*0.8) * 0.18;
+    pos.array[i*3+1] = Math.sin(bx*0.1 + elapsed*1.1) * 0.2 + Math.cos(bz*0.12 + elapsed*0.75) * 0.16;
   }
   pos.needsUpdate = true;
 
-  /* --- UI: giai đoạn + số đo --- */
+  /* --- UI số liệu --- */
   const pi = PHASES.findIndex(p => tProg < p.to);
   if (pi !== phaseIdx && pi >= 0){
     phaseIdx = pi;
     $('phaseName').textContent = PHASES[pi].name;
     $('phaseDesc').textContent = PHASES[pi].desc;
   }
-  $('clock').textContent = Math.round(tProg * DUR) + 's';
-  const gap = Math.max(0, (sz - SHIP_HW) - DOCK_EDGE_Z); // khoảng trống mạn tàu → mép bến (đơn vị)
+  const gap = Math.max(0, (sz - SHIP_HW) - DOCK_EDGE_Z);
   $('dist').textContent = tProg >= 1 ? 'Đã áp bến ✓' : (gap * 5).toFixed(0) + ' m';
-  $('speedo').textContent = (!playing || tProg >= 1) ? '0 hải lý/h' : Math.max(0.3, shipSpeed * 0.55).toFixed(1) + ' hải lý/h';
+  $('speedo').textContent = (!playing || tProg >= 1) ? '0 kn' : Math.max(0.3, shipSpeed * 0.55).toFixed(1) + ' kn';
+  $('etaTxt').textContent = tProg >= 1 ? 'Đã cập bến' : fmtETA(tProg);
+  $('routeFill').style.width = (4 + tProg * 92) + '%';
+  $('routePt').style.left = (4 + tProg * 92) + '%';
+  $('routePt').classList.toggle('done', tProg > 0.02);
+  const badge = $('statusBadge');
+  if (tProg >= 1){ badge.textContent = 'Berthed ✓'; badge.classList.add('green'); }
+  else if (tProg > 0.6){ badge.textContent = 'Docking'; badge.classList.remove('green'); }
+  else { badge.textContent = 'Delayed'; badge.classList.remove('green'); }
 
-  /* --- Camera --- */
-  if (camMode !== 'free'){
-    if (camMode === 'overview'){ camTargetPos.set(26, 58, 138); camTargetLook.set(-6, 3, 8); }
-    if (camMode === 'follow'){ camTargetPos.set(sx - 42, 26, sz + 52); camTargetLook.set(sx, 5, sz); }
-    if (camMode === 'tug'){ camTargetPos.copy(tug1.position).add(V.set(-14, 9, 16)); camTargetLook.copy(tug1.position); }
-    if (camMode === 'dock'){ camTargetPos.set(-8, 7, DOCK_EDGE_Z - 4); camTargetLook.set(sx + 6, 5, sz); }
-    camera.position.lerp(camTargetPos, 0.045);
-    controls.target.lerp(camTargetLook, 0.08);
-  }
+  /* --- Ship Balance wireframe: nghiêng theo tàu thật --- */
+  balShip.rotation.z = heel * 14;
+  balShip.rotation.y = elapsed * 0.25;
+  $('heelTxt').textContent = (heel * 14 * 57.3).toFixed(1) + '°';
+
   controls.update();
   renderer.render(scene, camera);
+  balRenderer.render(balScene, balCam);
+  updateMarkers();
 }
-renderer.setAnimationLoop(animate);
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+function resize(){
+  const w = heroEl.clientWidth, h = heroEl.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  const bw = balEl.clientWidth, bh = balEl.clientHeight;
+  balRenderer.setSize(bw, bh);
+  balCam.aspect = bw / bh; balCam.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+renderer.setAnimationLoop(animate);
 </script>
 </body>
 </html>
